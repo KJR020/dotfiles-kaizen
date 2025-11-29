@@ -1,0 +1,143 @@
+name: "Dotfiles Kaizen (external)"
+
+on:
+  schedule:
+    # Run daily at 9:00 JST (0:00 UTC)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Execution mode'
+        required: true
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - all
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  TARGET_REPO: ${{ vars.DOTFILES_REPO || 'KJR020/dotfiles' }}
+  MODE: ${{ github.event.inputs.mode || 'daily' }}
+
+jobs:
+  select-review-targets:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_domains: ${{ steps.set-matrix.outputs.has_domains }}
+    steps:
+      - name: Checkout dotfiles-kaizen
+        uses: actions/checkout@v4
+
+      - name: Checkout target dotfiles
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_REPO }}
+          path: dotfiles
+          token: ${{ secrets.DOTFILES_TOKEN }}
+
+      - name: 📅 Select domains to review
+        id: set-matrix
+        run: |
+          matrix=$(bash src/dotfiles_kaizen/generate_matrix.sh src/dotfiles_kaizen/config.json)
+          domain_count=$(echo "$matrix" | jq -r 'length')
+
+          echo "📋 $domain_count domain(s) scheduled for review"
+
+          {
+            echo "matrix=$matrix"
+            echo "has_domains=$([ "$domain_count" -gt 0 ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+  check-latest-practices:
+    needs: select-review-targets
+    if: needs.select-review-targets.outputs.has_domains == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.select-review-targets.outputs.matrix) }}
+      fail-fast: false
+      max-parallel: 3
+    steps:
+      - name: Checkout dotfiles-kaizen
+        uses: actions/checkout@v4
+
+      - name: Checkout target dotfiles
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_REPO }}
+          path: dotfiles
+          token: ${{ secrets.DOTFILES_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: 🔍 Analyze ${{ matrix.domain_name }}
+        env:
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          uv run dotfiles-kaizen \
+            --domain-id "${{ matrix.domain_id }}" \
+            --config src/dotfiles_kaizen/config.json \
+            --content-base dotfiles \
+            --issue-repo "${{ env.TARGET_REPO }}" \
+            --github-token "${{ secrets.DOTFILES_TOKEN }}"
+
+      - name: Upload analysis artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-${{ matrix.domain_id }}
+          path: |
+            src/dotfiles_kaizen/config.json
+          retention-days: 7
+
+  create-daily-summary:
+    needs: [select-review-targets, check-latest-practices]
+    if: always() && needs.select-review-targets.outputs.has_domains == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📊 Report execution results
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## 📊 Kaizen Execution Summary
+
+          - **Date**: $(date -u +"%Y-%m-%d %H:%M")
+          - **Mode**: ${{ github.event.inputs.mode || 'daily' }}
+          - **Target Repository**: ${{ env.TARGET_REPO }}
+          - **Domains**: $(echo '${{ needs.select-review-targets.outputs.matrix }}' | jq -r 'length')
+          - **Status**: Selection=${{ needs.select-review-targets.result }}, Analysis=${{ needs.check-latest-practices.result }}
+          EOF
+
+  notify-skip:
+    needs: select-review-targets
+    if: needs.select-review-targets.outputs.has_domains == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: ℹ️ No reviews today
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## ℹ️ No Kaizen Scheduled
+
+          - **Date**: $(date -u +"%Y-%m-%d %H:%M")
+          - **Target Repository**: ${{ env.TARGET_REPO }}
+          - **Reason**: No domains scheduled for kaizen today
+          EOF
