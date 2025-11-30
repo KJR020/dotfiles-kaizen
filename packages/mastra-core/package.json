@@ -1,0 +1,17 @@
+{
+  "name": "@mastra/core",
+  "version": "0.0.1-local",
+  "description": "Lightweight Flow shim used for offline mastra-style orchestration.",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}
