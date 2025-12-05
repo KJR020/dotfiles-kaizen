@@ -1,4 +1,4 @@
-name: "Dotfiles Kaizen (external)"
+name: 'Dotfiles Kaizen'
 
 on:
   schedule:
@@ -55,7 +55,7 @@ jobs:
       - name: 📅 Select domains to review
         id: set-matrix
         run: |
-          matrix=$(pnpm matrix -- --config config/domains.json --mode "${MODE}")
+          matrix=$(pnpm matrix --config config/domains.json --mode "${MODE}")
           domain_count=$(echo "$matrix" | jq -r 'length')
 
           echo "📋 $domain_count domain(s) scheduled for review"

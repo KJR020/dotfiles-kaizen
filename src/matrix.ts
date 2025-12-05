@@ -4,9 +4,15 @@ import { logger } from './utils/logger.js';
 
 const args = parseArgs({
   options: {
-    config: { type: 'string', default: 'config/domains.json' },
-    mode: { type: 'string' }
-  }
+    config: {
+      type: 'string',
+      default: 'config/domains.json'
+    },
+    mode: {
+      type: 'string'
+    }
+  },
+  allowPositionals: false
 }).values;
 
 const mode = (args.mode ?? process.env.MODE ?? 'daily').toLowerCase();
