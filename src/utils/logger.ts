@@ -15,7 +15,7 @@ export class Logger {
     const prefix = LEVEL_PREFIX[level] ?? '';
     const payload = extra ? `${message} ${JSON.stringify(extra)}` : message;
     // eslint-disable-next-line no-console
-    console[level === 'error' ? 'error' : 'log'](`${prefix} ${payload}`);
+    console.error(`${prefix} ${payload}`);
   }
 
   info(message: string, extra?: Record<string, unknown>) {
