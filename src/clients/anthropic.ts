@@ -21,26 +21,40 @@ export class AnthropicClientWrapper {
     this.temperature = options.temperature ?? 0.3;
   }
 
-  async analyze(domain: DomainDefinition, researchOutput: ResearchOutput, currentContent: string): Promise<AnalysisOutput> {
+  async analyze(
+    domain: DomainDefinition,
+    researchOutput: ResearchOutput,
+    currentContent: string
+  ): Promise<AnalysisOutput> {
     const userPrompt = buildUserPrompt(domain, researchOutput, currentContent);
     logger.info('Sending prompt to Anthropic', { temperature: this.temperature });
 
-    const response = await this.client.messages.create({
-      model: 'claude-3-5-sonnet-latest',
-      system: SYSTEM_PROMPT,
-      max_tokens: 4000,
-      temperature: this.temperature,
-      messages: [
-        {
-          role: 'user',
-          content: userPrompt
-        }
-      ]
-    });
+    try {
+      const response = await this.client.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        system: SYSTEM_PROMPT,
+        max_tokens: 4000,
+        temperature: this.temperature,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ]
+      });
 
-    const contentBlock = response.content[0];
-    const text = contentBlock?.type === 'text' ? contentBlock.text : '';
-    logger.debug('Received response from Anthropic', { tokens: response.usage?.output_tokens });
-    return parseAnalysis(text);
+      const contentBlock = response.content[0];
+      const text = contentBlock?.type === 'text' ? contentBlock.text : '';
+      logger.debug('Received response from Anthropic', { tokens: response.usage?.output_tokens });
+      return parseAnalysis(text);
+    } catch (error) {
+      const err = error as Error & { status?: number; error?: { type?: string; message?: string } };
+      logger.error('Anthropic API call failed', {
+        status: err.status,
+        type: err.error?.type,
+        message: err.message
+      });
+      throw error;
+    }
   }
 }

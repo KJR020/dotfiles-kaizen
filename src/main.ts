@@ -53,6 +53,11 @@ async function main() {
 }
 
 main().catch((error) => {
-  logger.error('Failed to run dotfiles-kaizen', { error: (error as Error).message });
+  const err = error as Error & { cause?: Error };
+  logger.error('Failed to run dotfiles-kaizen', {
+    error: err.message,
+    cause: err.cause?.message,
+    stack: err.cause?.stack ?? err.stack
+  });
   process.exitCode = 1;
 });

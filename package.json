@@ -10,7 +10,8 @@
     "matrix": "tsx src/matrix.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "bats test/integration.bats"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
