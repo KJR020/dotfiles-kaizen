@@ -1,14 +1,24 @@
 # Environment
 .env
+.env.local
 
-# Python
+# Node / TypeScript
+node_modules/
+dist/
+pnpm-lock.yaml
+coverage/
+.nyc_output/
+
+# Build artifacts
+*.tsbuildinfo
+
+# Python (legacy)
 .venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-*.py[cod]
 *$py.class
 .pytest_cache/
 .ruff_cache/

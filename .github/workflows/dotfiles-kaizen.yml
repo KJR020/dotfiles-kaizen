@@ -33,6 +33,20 @@ jobs:
       - name: Checkout dotfiles-kaizen
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+
       - name: Checkout target dotfiles
         uses: actions/checkout@v4
         with:
@@ -43,7 +57,7 @@ jobs:
       - name: 📅 Select domains to review
         id: set-matrix
         run: |
-          matrix=$(bash src/dotfiles_kaizen/generate_matrix.sh src/dotfiles_kaizen/config.json)
+          matrix=$(pnpm matrix -- --config config/domains.json --mode "${MODE}")
           domain_count=$(echo "$matrix" | jq -r 'length')
 
           echo "📋 $domain_count domain(s) scheduled for review"
@@ -66,6 +80,20 @@ jobs:
       - name: Checkout dotfiles-kaizen
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+
       - name: Checkout target dotfiles
         uses: actions/checkout@v4
         with:
@@ -73,25 +101,15 @@ jobs:
           path: dotfiles
           token: ${{ secrets.DOTFILES_TOKEN }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync
-
       - name: 🔍 Analyze ${{ matrix.domain_name }}
         env:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.DOTFILES_TOKEN }}
+          GITHUB_REPOSITORY: ${{ env.TARGET_REPO }}
         run: |
-          uv run dotfiles-kaizen \
-            --domain-id "${{ matrix.domain_id }}" \
-            --config src/dotfiles_kaizen/config.json \
+          pnpm start -- --domain-id "${{ matrix.domain_id }}" \
+            --config config/domains.json \
             --content-base dotfiles \
             --issue-repo "${{ env.TARGET_REPO }}" \
             --github-token "${{ secrets.DOTFILES_TOKEN }}"
@@ -102,7 +120,7 @@ jobs:
         with:
           name: analysis-${{ matrix.domain_id }}
           path: |
-            src/dotfiles_kaizen/config.json
+            config/domains.json
           retention-days: 7
 
   create-daily-summary:
