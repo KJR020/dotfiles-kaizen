@@ -55,7 +55,7 @@ jobs:
       - name: 📅 Select domains to review
         id: set-matrix
         run: |
-          matrix=$(pnpm matrix --config config/domains.json --mode "${MODE}")
+          matrix=$(pnpm --silent matrix --config config/domains.json --mode "${MODE}")
           domain_count=$(echo "$matrix" | jq -r 'length')
 
           echo "📋 $domain_count domain(s) scheduled for review"
@@ -104,7 +104,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.DOTFILES_TOKEN }}
           GITHUB_REPOSITORY: ${{ env.TARGET_REPO }}
         run: |
-          pnpm start -- --domain-id "${{ matrix.domain_id }}" \
+          pnpm start --domain-id "${{ matrix.domain_id }}" \
             --config config/domains.json \
             --content-base dotfiles \
             --issue-repo "${{ env.TARGET_REPO }}" \
