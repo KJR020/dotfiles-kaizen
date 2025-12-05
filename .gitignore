@@ -5,7 +5,6 @@
 # Node / TypeScript
 node_modules/
 dist/
-pnpm-lock.yaml
 coverage/
 .nyc_output/
 
